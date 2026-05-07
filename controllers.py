@@ -37,10 +37,26 @@ def login():
 def criar_produto():
     usuario_atual = get_jwt_identity()
     data = request.get_json()
-    novo_produto = Product(name=data['name'], owner_id=usuario_atual['id'])
-    db.session.add(novo_produto)
-    db.session.commit()
-    return jsonify({"mensagem": "Produto criado!"}), 201
+
+    # Cenário 1: O usuário enviou uma LISTA de produtos (Cadastro em Lote)
+    if isinstance(data, list):
+        for item in data:
+            novo_produto = Product(name=item['name'], owner_id=usuario_atual['id'])
+            db.session.add(novo_produto)
+        
+        db.session.commit()
+        return jsonify({"mensagem": f"{len(data)} produtos criados com sucesso!"}), 201
+
+    # Cenário 2: O usuário enviou apenas UM produto
+    elif isinstance(data, dict):
+        novo_produto = Product(name=data['name'], owner_id=usuario_atual['id'])
+        db.session.add(novo_produto)
+        db.session.commit()
+        return jsonify({"mensagem": "Produto criado!"}), 201
+
+    # Cenário 3: Formato incorreto
+    else:
+        return jsonify({"erro": "Formato JSON inválido"}), 400
 
 # LISTAR (Read)
 @api_blueprint.route('/produtos', methods=['GET'])
