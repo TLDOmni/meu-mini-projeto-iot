@@ -92,3 +92,41 @@ def deletar_produto(id):
     db.session.delete(produto)
     db.session.commit()
     return jsonify({"mensagem": "Produto deletado com sucesso!"})
+
+# LISTAR USUÁRIOS (Read)
+@api_blueprint.route('/users', methods=['GET'])
+@jwt_required()
+def listar_usuarios():
+    usuario_atual = get_jwt_identity()
+
+    # REGRA DE AUTORIZAÇÃO: Apenas administradores podem ver a lista de usuários
+    if usuario_atual['role'] != 'admin':
+        return jsonify({"erro": "Acesso negado. Apenas administradores podem ver os usuários."}), 403
+
+    usuarios = User.query.all()
+    return jsonify([{"id": u.id, "username": u.username, "role": u.role} for u in usuarios]), 200
+
+# EXCLUIR USUÁRIO (Delete)
+@api_blueprint.route('/users/<int:id>', methods=['DELETE'])
+@jwt_required()
+def deletar_usuario(id):
+    usuario_atual = get_jwt_identity()
+
+    # REGRA DE AUTORIZAÇÃO: Apenas administradores podem excluir usuários
+    if usuario_atual['role'] != 'admin':
+        return jsonify({"erro": "Acesso negado. Apenas administradores podem excluir usuários."}), 403
+
+    usuario_para_deletar = User.query.get(id)
+
+    if not usuario_para_deletar:
+        return jsonify({"erro": "Usuário não encontrado"}), 404
+
+    # Regra de Segurança: Impedir que o admin delete a si mesmo acidentalmente
+    if usuario_para_deletar.id == usuario_atual['id']:
+        return jsonify({"erro": "Operação negada: Você não pode deletar a si mesmo."}), 400
+
+    db.session.delete(usuario_para_deletar)
+    db.session.commit()
+    return jsonify({"mensagem": f"Usuário '{usuario_para_deletar.username}' deletado com sucesso!"}), 200
+
+
